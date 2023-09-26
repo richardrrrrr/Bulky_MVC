@@ -20,7 +20,7 @@ namespace BulkyWeb.Areas.Admin.Controllers
 			}
 			public IActionResult Index()
 			{
-				List<Product> objProductList = _unitOfWork.Product.GetAll().ToList();
+				List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties:"Category").ToList();
 				
 				return View(objProductList);
 			}
@@ -110,32 +110,42 @@ namespace BulkyWeb.Areas.Admin.Controllers
 			}
 			
 			
-			public IActionResult Delete(int? id)
-			{
-				if (id == null || id == 0)
-				{
-					return NotFound();
-				}
-				Product productFromDB = _unitOfWork.Product.Get(u => u.Id == id);
-				if (productFromDB == null)
-				{
-					return NotFound();
-				}
-				return View(productFromDB);
-			}
-			[HttpPost, ActionName("Delete")]
-			public IActionResult DeletePost(int? id)
-			{
-				Product obj = _unitOfWork.Product.Get(u => u.Id == id);
-				if (obj == null)
-				{
-					return NotFound();
-				}
-				_unitOfWork.Product.Remove(obj);
-				_unitOfWork.Save();
-				TempData["success"] = "Product Deleted Successfully";
-				return RedirectToAction("Index");
-			}
+			
+
+
+		#region API CALLS
+		[HttpGet]
+		public IActionResult GetAll() 
+		{
+			List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
+			return Json(new { data = objProductList });
 		}
+
+		[HttpDelete]
+		public IActionResult Delete(int id)
+		{
+			var productDelete = _unitOfWork.Product.Get(u => u.Id == id);
+			if (productDelete == null)
+			{
+				return Json(new { success = false, message = "Error while Deleting" });
+			}
+			if (productDelete.ImgUrl != null)
+			{
+
+				var oldImgPath = Path.Combine(_webHostEnvironment.WebRootPath, productDelete.ImgUrl.TrimStart('\\'));
+
+				if (System.IO.File.Exists(oldImgPath))
+				{
+					System.IO.File.Delete(oldImgPath);
+				}
+			}
+
+			_unitOfWork.Product.Remove(productDelete);
+			_unitOfWork.Save();
+
+			return Json(new { success = true, message = "Delete Successfull" });
+		} 
+		#endregion
 	}
+}
 
